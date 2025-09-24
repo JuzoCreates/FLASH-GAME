@@ -64,7 +64,8 @@ FLASH is a Python horror game built with the **Pygame** library.
    python3 -m pygame.examples.aliens
 
 
-3. ```Verify installation in Python shell:
+3.
+  ```Verify installation in Python shell:
     import pygame
    
 5. Clone this repository and make sure you are in "Final-Project" folder
