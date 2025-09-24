@@ -1,5 +1,3 @@
-# Last Updated April 14 2020
-
 import pygame as pg
 import math
 
