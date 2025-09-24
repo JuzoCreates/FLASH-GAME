@@ -67,10 +67,13 @@ FLASH is a Python horror game built with the **Pygame** library.
 3. ```Verify installation in Python shell:
     import pygame
    
-5. Clone this repository and open FLASH_main.py.
+5. Clone this repository and make sure you are in "Final-Project" folder
 
 
-6. Run the game by pressing F5 or pressing play button in your coding app.
+6. ```open FLASH_main.py or press "Run" button
+   py FLASH_main.py
+
+7. You can enjoy the game!
 
 
 
@@ -145,3 +148,6 @@ FLASH is a Python horror game built with the **Pygame** library.
 - FLASH_jumpscare.ogg, FLASH_lowMonster.wav, FLASH_monsterStep.ogg
 
 - FLASH_shock.wav, FLASH_steps.wav, FLASH_swoosh.ogg
+
+
+⚠️⚠️⚠️ IF YOU FIND ANY BUG PLEASE REPORT THEM DIRECTLY TO ME ⚠️⚠️⚠️
