@@ -1,4 +1,3 @@
-# last edited April 14, 2020
 import os
 import pygame as pg
 import math
