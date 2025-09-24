@@ -1,5 +1,3 @@
-#Last updated April 14 2020
-
 import pygame as pg
 import os
 import sys
