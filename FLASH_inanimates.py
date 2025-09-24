@@ -1,4 +1,3 @@
-#Last updated April 14 2020
 import pygame as pg
 import FLASH_primarySettings as ps
 import random
