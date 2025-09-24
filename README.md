@@ -1,4 +1,4 @@
-# ⚡ FLASH
+# ⚡ FLASH - BETA
 
 FLASH is a Python horror game built with the **Pygame** library.
 
