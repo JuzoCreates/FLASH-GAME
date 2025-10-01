@@ -92,46 +92,101 @@ The game should start automatically. If you encounter any issues, make sure you'
 
 ---
 
-## 📂 Project Structure
+## 🗂️ **Updated Project Structure: FLASH-GAME**
 
-### 🔑 Core Files
-- `FLASH_main.py` — main entry point
-- `FLASH_characters.py`
-- `FLASH_inanimates.py`
-- `FLASH_menu.py`
-- `FLASH_primarySettings.py`
-- `FLASH_rendering.py`
-- `FLASH_Scores.txt` — saved stats
-
-### 🎨 Assets
-
-#### 🌍 FLASH_Environment
-- `FLASH_Escape.png`
-- `FLASH_Pause.png`
-- `FLASH_RenderedElements/`: `FLASH_Background.png`, `FLASH_Door.png`, `FLASH_Fog.png`, `FLASH_MaxWallDistance.jpg`, `FLASH_Wall.png`
-- `FLASH_UI/`: `FLASH_Battery0.png`, `FLASH_BatteryFull.png`, `FLASH_BatteryLow.png`, `FLASH_BatteryMed.png`, `FLASH_Key.png`
-
-#### 🔦 FLASH_InteractiveAssets
-- `FLASH_Flashlight/`: `FLASH_FlashlightHalfway.png`, `FLASH_FlashlightOff.png`, `FLASH_FlashlightOn.png`
-- `FLASH_Monster/`: `FLASH_Hallucination.png`, `FLASH_ShadowMonster.png`
-- `FLASH_Pickups/`: `FLASH_Battery.png`, `FLASH_Key.png` (⚠️ different from UI version)
-
-#### 😱 FLASH_JumpScare
-- `FLASH_01.png` … `FLASH_26.png`
-
-#### 🖥️ FLASH_MenuAssets
-- `FLASH_Icon.png`, `FLASH_Over.png`, `FLASH_Win.png`
-- `Backgrounds/`: `FLASH_CreditsScreen.png`, `FLASH_HowToPlayControls.png`, `FLASH_HowToPlayScreen.png`, `FLASH_MenuBackground.png`, `FLASH_SettingsMenu.png`
-- `Buttons/`: (Easy, Medium, Hard, Exit, Options, Start, etc. — each with Highlighted versions)
-- `Logos/`: `FLASH_Logo.png`, `FLASH_Title.png`
-
-#### 🎵 FLASH_Music
-- `FLASH_chase.ogg`
-
-#### 🔊 FLASH_SoundEffects
-- `FLASH_ding.wav`, `FLASH_discovery.wav`, `FLASH_flashlightOn.wav`, `FLASH_gameOver.ogg`
-- `FLASH_jumpscare.ogg`, `FLASH_lowMonster.wav`, `FLASH_monsterStep.ogg`
-- `FLASH_shock.wav`, `FLASH_steps.wav`, `FLASH_swoosh.ogg`
+```
+FLASH-GAME/
+├── 🎮 **Core Game Files**
+│   ├── FLASH_main.py              # Main game loop and core logic
+│   ├── FLASH_menu.py              # Menu system and UI
+│   ├── FLASH_characters.py        # Player and monster classes
+│   ├── FLASH_inanimates.py        # Static objects and items
+│   ├── FLASH_rendering.py         # Graphics and rendering engine
+│   └── FLASH_primarySettings.py   # Game configuration and settings
+│
+├── 🖼️ **Assets/Visuals**
+│   ├── FLASH_Environment/
+│   │   ├── FLASH_RenderedElements/
+│   │   │   ├── FLASH_Background.png
+│   │   │   ├── FLASH_Door.png
+│   │   │   ├── FLASH_Fog.png
+│   │   │   ├── FLASH_Wall.png
+│   │   │   └── FLASH_MaxWallDistance.jpg
+│   │   ├── FLASH_UI/
+│   │   │   ├── FLASH_Battery0.png
+│   │   │   ├── FLASH_BatteryFull.png
+│   │   │   ├── FLASH_BatteryLow.png
+│   │   │   ├── FLASH_BatteryMed.png
+│   │   │   └── FLASH_Key.png
+│   │   ├── FLASH_Escape.png
+│   │   └── FLASH_Pause.png
+│   │
+│   ├── FLASH_InteractiveAssets/
+│   │   ├── FLASH_Flashlight/
+│   │   │   ├── FLASH_FlashlightOn.png
+│   │   │   ├── FLASH_FlashlightOff.png
+│   │   │   └── FLASH_FlashlightHalfway.png
+│   │   ├── FLASH_Monster/
+│   │   │   ├── FLASH_ShadowMonster.png
+│   │   │   └── FLASH_Hallucination.png
+│   │   └── FLASH_Pickups/
+│   │       ├── FLASH_Battery.png
+│   │       └── FLASH_Key.png
+│   │
+│   ├── FLASH_JumpScare/
+│   │   ├── FLASH_01.png to FLASH_26.png    # 26 jump scare frames
+│   │   └── (complete animation sequence)
+│   │
+│   └── FLASH_MenuAssets/
+│       ├── FLASH_Backgrounds/
+│       │   ├── FLASH_MenuBackground.png
+│       │   ├── FLASH_SettingsMenu.png
+│       │   ├── FLASH_HowToPlayScreen.png
+│       │   ├── FLASH_HowToPlayControls.png
+│       │   └── FLASH_CreditsScreen.png
+│       ├── FLASH_Buttons/
+│       │   ├── FLASH_Start.png (+ Highlighted)
+│       │   ├── FLASH_Options.png (+ Highlighted)
+│       │   ├── FLASH_Exit.png (+ Highlighted)
+│       │   ├── FLASH_Easy/Normal/Hard buttons (+ Highlighted)
+│       │   ├── FLASH_Low/Medium/High graphics (+ Highlighted)
+│       │   ├── FLASH_Keyboard/Mouse controls (+ Highlighted)
+│       │   └── Various UI elements (Ticked/Unticked boxes, etc.)
+│       ├── FLASH_Logos/
+│       │   ├── FLASH_Logo.png
+│       │   └── FLASH_Title.png
+│       ├── FLASH_Icon.png
+│       ├── FLASH_Over.png
+│       └── FLASH_Win.png
+│
+├── 🔊 **Audio Files**
+│   ├── FLASH_Music/
+│   │   └── FLASH_chase.ogg           # Chase sequence music
+│   │
+│   └── FLASH_SoundEffects/
+│       ├── FLASH_steps.wav           # Player footsteps
+│       ├── FLASH_monsterSteps.ogg    # Monster footsteps
+│       ├── FLASH_lowMonster.wav      # Monster growls
+│       ├── FLASH_flashlightOn.wav    # Flashlight sound
+│       ├── FLASH_jumpscare.ogg       # Jump scare sound
+│       ├── FLASH_gameOver.ogg        # Game over music
+│       ├── FLASH_ding.wav            # Notification sound
+│       ├── FLASH_discovery.wav       # Item discovery
+│       ├── FLASH_shock.wav           # Shock/surprise sound
+│       └── FLASH_swoosh.ogg          # UI transition sound
+│
+├── 📊 **Data & Configuration**
+│   ├── FLASH_Scores.txt              # High scores and game data
+│   └── __pycache__/                  # Python compiled files
+│       ├── FLASH_characters.cpython-313.pyc
+│       ├── FLASH_menu.cpython-313.pyc
+│       ├── FLASH_rendering.cpython-313.pyc
+│       ├── FLASH_inanimates.cpython-313.pyc
+│       └── FLASH_primarySettings.cpython-313.pyc
+│
+└── 📄 **Documentation**
+    └── README.md                      # Project documentation
+```
 
 ---
 
