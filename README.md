@@ -78,7 +78,7 @@ print(pygame.version.ver)
 ### 4. Clone and Setup
 ```bash
 git clone https://github.com/JuzoCreates/FLASH-GAME.git
-cd Final-Project
+cd FLASH-GAME
 ```
 
 ### 5. Run the Game
