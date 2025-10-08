@@ -54,6 +54,8 @@ FLASH is a Python horror game built with the **Pygame** library.
 
 ## 💻 Installation & Running
 
+### WORKS ONLY ON WINDOWS, OTHER OS IS NOT AVIABLE NOW!
+
 ### 1. Install Python
 - **Recommended version:** 3.8 or higher
 - Download from [python.org](https://www.python.org/downloads/)
