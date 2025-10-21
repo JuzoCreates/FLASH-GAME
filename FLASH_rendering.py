@@ -2,15 +2,6 @@ import pygame as pg
 import math
 
 class Camera:
-    '''
-    Translates the  2D span of the player's view into a 3D(ish) view of the surroundings
-    ===============Attributes===============
-    screenWidth (int): the width (in pixels) of the screen
-    screenLength (int): the length (in pixels) of the screen
-    fov (float): the span of the player's view
-    screenIterator (int): this is both the value iterated through the range of the screen width, and also the width of the lines drawn as a result of ray casting (same value so no spaces between lines)
-    pgScreenHandle (pygame.display): the screen to which the 3D view will be drawn to
-    '''
     def __init__(self, screenWidth, screenLength, fov, screenIterator, pgScreenHandle):
         self.screenWidth = screenWidth
         self.screenLength = screenLength
@@ -19,31 +10,23 @@ class Camera:
         self.pgScreenHandle = pgScreenHandle
 
     def renderWalls(self, extendedRay, renderingDistance, horizontalScreenPixel, texturesToLoad, charY, flashlightFlag, flashlightRender):
-        '''
-        Draws the player's perspective to the screen by segmenting the texture according to the float value of the ray and subsurfacing the appropriate dimensions from the image before drawing it.        
-        ===============Parameters===============
-        extendedRay (Ray()): the fully cast ray
-        renderingDistance (int): the value for which the farthest ray will be cast
-        horizontalScreenPixel (int): the current pixel on the x-axis that is being drawn to
-        texturesToLoad (Dict[string:pygame.image]): the dictionary that determines which image to use
-        charY (float): y-position of the character, used to determine which offset to use for the image. charX can be used in the same way, the choice of charY is arbitrary
-        flashlightFlag (bool): The power status of the flashlight (on = True, off = False)
-        flashlightRender (int): the max distance a ray in the range of the flashlight portion of the screen can be cast
-        
-        returns nothing
-        '''
-        
         if extendedRay.distanceToObstruction <= renderingDistance:
             if extendedRay.obstructionChar == '#':
                 texture = texturesToLoad['wall']
                 ceiling = int(self.screenLength/2 - self.screenLength/extendedRay.distanceToObstruction)
-                percent = extendedRay.distanceToObstruction/ renderingDistance
+            
+                # Для вспышки используем меньшее затемнение
+                if flashlightFlag:
+                    percent = extendedRay.distanceToObstruction / renderingDistance * 0.3  # 30% затемнения для вспышки
+                else:
+                    percent = extendedRay.distanceToObstruction/ renderingDistance
+                
                 lineLength = self.screenLength - (ceiling*2)
                 if(int(charY + (extendedRay.yRayUnitVector*(extendedRay.distanceToObstruction - extendedRay.rayIncrementor))) != int(extendedRay.yTestUnitVector)):
                     rayTest = extendedRay.xTestUnitVector % 1  
                 else:
                     rayTest = extendedRay.yTestUnitVector % 1
-                
+            
                 textureXPos = int((texture.get_width() - self.screenIterator)*(rayTest))           
                 drawnImageRect = pg.Rect(textureXPos, 0, self.screenIterator, texture.get_height())
                 drawnImage = texture.subsurface(drawnImageRect)
@@ -55,13 +38,19 @@ class Camera:
             elif extendedRay.obstructionChar == 'E':
                 texture = texturesToLoad['exit']
                 ceiling = int(self.screenLength/2 - self.screenLength/extendedRay.distanceToObstruction)
-                percent = extendedRay.distanceToObstruction/ renderingDistance
+            
+                # Для вспышки используем меньшее затемнение
+                if flashlightFlag:
+                    percent = extendedRay.distanceToObstruction / renderingDistance * 0.3  # 30% затемнения для вспышки
+                else:
+                    percent = extendedRay.distanceToObstruction/ renderingDistance
+                
                 lineLength = self.screenLength - (ceiling*2)
                 if(int(charY + (extendedRay.yRayUnitVector*(extendedRay.distanceToObstruction - extendedRay.rayIncrementor))) != int(extendedRay.yTestUnitVector)):
                     rayTest = extendedRay.xTestUnitVector % 1  
                 else:
                     rayTest = extendedRay.yTestUnitVector % 1
-                
+            
                 textureXPos = int((texture.get_width() - self.screenIterator)*(rayTest))           
                 drawnImageRect = pg.Rect(textureXPos, 0, self.screenIterator, texture.get_height())
                 drawnImage = texture.subsurface(drawnImageRect)
@@ -70,10 +59,10 @@ class Camera:
                 darkRectangle.fill((0,0,0,(255)*percent))
                 self.pgScreenHandle.blit(scaledImage, (horizontalScreenPixel, ceiling))
                 self.pgScreenHandle.blit(darkRectangle, (horizontalScreenPixel, ceiling))
-                
+            
         else:
             texture = texturesToLoad['far wall']
-            if flashlightFlag:
+            if flashlightFlag:  # Во время вспышки показываем дальние стены
                 ceiling = int(self.screenLength/2 - self.screenLength/flashlightRender)
             else:
                 ceiling = int(self.screenLength/2 - self.screenLength/renderingDistance)
@@ -84,37 +73,32 @@ class Camera:
             self.pgScreenHandle.blit(scaledImage, (horizontalScreenPixel, ceiling))
    
     def renderMapElements(self, extendedRay, texturesToLoad, renderingDistance, flashlightRenderingDistance, horizontalScreenPixel, gameMap, shadow):
-        '''
-        Renders non-wall objects in a similar way to the wall function, but using just one image that always faces the player
-        This is done in the raycasting method of the ray, as the math required must be done while the ray is extending
-        ===============Parameters===============
-        extendedRay (Ray()): the fully cast ray, extended beyond the map element so that a background is loaded behind the object
-        texturesToLoad (Dict[string:pygame.image]): the dictionary that determines which image to use
-        renderingDistance (int): the maximum rendering distance of the section
-        flashlightRenderingDistance (int): the maximum possible rendering distance, used to determine if the current rendering distance is the same
-        horizontalScreenPixel (int): the current pixel on the x-axis that is being drawn to
-        gameMap (GameMap()): the map object that is used to remove a character given a set of conditions
-        shadow (ShadowMonster()): the shadow object used to determine if the player is shining away a hallucination or not
-        
-        return nothing
-        '''
         if extendedRay.objectsHit != []:
             extendedRay.objectsHit.reverse()
             for pointData in extendedRay.objectsHit:
-                if pointData[0] == 'A':
+                # Для всех объектов во время вспышки используем уменьшенное затемнение
+                if pointData[0] == 'A':  # Монстр
                     texture = texturesToLoad['shadow monster']
-                    ceiling = int(self.screenLength/2 - self.screenLength/pointData[1])
-                    percentVision = pointData[1]/renderingDistance
-                    lineLength = self.screenLength - (ceiling*2)
-                    rayTest = pointData[2]
-                    textureXPos = int((texture.get_width() - self.screenIterator)*(rayTest))
-                    drawnImageRect = pg.Rect(textureXPos, 0, self.screenIterator, texture.get_height())
-                    drawnImage = texture.subsurface(drawnImageRect)
-                    scaledImage = pg.transform.scale(drawnImage, (self.screenIterator, lineLength))
-                    darkRectangle = pg.Surface((self.screenIterator,lineLength)).convert_alpha()
-                    darkRectangle.fill((0,0,0,(255)*percentVision))
-                    self.pgScreenHandle.blit(scaledImage, (horizontalScreenPixel, ceiling))
-                    self.pgScreenHandle.blit(darkRectangle, (horizontalScreenPixel, ceiling))
+                    if texture:
+                        distance = max(0.1, pointData[1])
+                        wall_height = (self.screenLength / distance) * 2
+                        ceiling = max(0, int((self.screenLength - wall_height) / 2))
+                        lineLength = int(wall_height)
+                    
+                        # Для вспышки используем меньшее затемнение
+                        percentVision = min(1.0, distance / renderingDistance * 0.3)  # 30% затемнения
+                        rayTest = max(0.0, min(1.0, pointData[2]))
+                    
+                        textureXPos = int((texture.get_width() - self.screenIterator) * rayTest)
+                        drawnImageRect = pg.Rect(textureXPos, 0, self.screenIterator, texture.get_height())
+                        drawnImage = texture.subsurface(drawnImageRect)
+                        scaledImage = pg.transform.scale(drawnImage, (self.screenIterator, lineLength))
+                     
+                        darkRectangle = pg.Surface((self.screenIterator, lineLength)).convert_alpha()
+                        darkRectangle.fill((0, 0, 0, int(255 * percentVision)))
+                    
+                        self.pgScreenHandle.blit(scaledImage, (horizontalScreenPixel, ceiling))
+                        self.pgScreenHandle.blit(darkRectangle, (horizontalScreenPixel, ceiling))
                 elif pointData[0] == 'B':
                     texture = texturesToLoad['battery']
                     ceiling = int(self.screenLength/2 - self.screenLength/(pointData[1]*1.25))
@@ -163,21 +147,7 @@ class Camera:
                         gameMap.removeChar(pointData[3])
                         shadow.spook = False
 
-
 class Ray:
-    '''
-    Describes the a ray extending from some origin to some point
-    ===============Attributes===============
-    originX (int): x-coord for where ray comes from on a 2D map
-    originY (int): y-coord for where ray comes from on a 2D map
-    rayA (float): the value for the angle of the ray in radians
-    xRayUnitVector (float): uses angle of the ray to find a unit vector for the x-axis
-    yRayUnitVector (float): uses angle of the ray to find a unit vector for the y-axis
-    distanceToObstruction (float): distance from the origin to a object blocking origins ray
-    rayIncrementor (float): the amount describing the increment of the unit vector the ray will be extended
-    objectsHit (List[char,float,float,Tuple[int]): the list of objects the current ray has hit so far with other information, like the distance before the first hit, the percentage of the line on the unit circle in the tile the ray is at, and the integer coordinates of the tile
-    obstructionHit (bool): flag for whether ray has hit something
-    '''
     def __init__(self, originX, originY, rayA, rayIncrementor):
         self.originX = originX
         self.originY = originY
@@ -185,24 +155,11 @@ class Ray:
         self.xRayUnitVector = math.sin(rayA)
         self.yRayUnitVector = math.cos(rayA)
         self.distanceToObstruction = 0.0
-        self.rayIncrementor = rayIncrementor# <---- adjust this to increase quality of walls
+        self.rayIncrementor = rayIncrementor
         self.objectsHit = []
         self.obstructionHit = False
 
     def rayCast(self, gameMap, groundChar, wallChars, renderingDistance):
-        '''
-        Casts ray from origin to the obstruction by incrementing ray till something is 'hit'
-        Hit occurs if the ray's current point is not in the ground on the array representation of the map
-        If a hit is on an object (battery, monster, etc.), the point must be in the further half of a circle within the tile the player is looking at. The point is then recorded so it isn't reiterated, and the ray is extended until a wall is hit
-        The point the ray has hit is recorded and the distance to that point is recorded
-        ===============Parameters===============
-        gameMap (GameMap()): the map object that describes the 2D version of the map
-        groundChar (char): character that indicates the ground, so the ray can pass over without considering it an obstruction
-        wallChars (List[char]): characters that indicates a wall, so the ray can stop
-        renderingDistance (int): maximum range of origin's ray casting extent
-        
-        returns nothing
-        '''
         self.distanceToObstruction = 0.000001
         while (not self.obstructionHit) and (self.distanceToObstruction < renderingDistance):
             self.distanceToObstruction += self.rayIncrementor 
@@ -217,7 +174,6 @@ class Ray:
                                 objectHitAlready = True
                                 break
                         if not objectHitAlready:
-                            # We move to a unit circle, I think this should be easier, rectangle will look weird and requires math too advanced for my point in time
                             try:
                                 centerPoint = (int(self.xTestUnitVector)+0.5,int(self.yTestUnitVector)+0.5)
                                 playerXDiff = centerPoint[0] - self.originX
@@ -231,7 +187,6 @@ class Ray:
                                 a = 1 + (objLineSlope**2)
                                 b = 2*(-centerPoint[0]) + 2*objLineSlope*(yOffset -centerPoint[1])
                                 c = (centerPoint[0]**2) + ((yOffset-centerPoint[1])**2) -0.25
-                                #NOT BAD VARIABLE NAMES BECAUSE THIS IS LITERALLY THE QUADRATIC EQUATION
                                 circleObjXIntersect1 = (-b + (((b**2) - (4*a*c))**0.5))/(2*a)
                                 circleObjYIntersect1 = (circleObjXIntersect1*objLineSlope) + yOffset
                                 circleObjXIntersect2 = (-b - (((b**2) - (4*a*c))**0.5))/(2*a)
@@ -245,11 +200,6 @@ class Ray:
                                         pointInFlag = False
                                 else:
                                     pointInFlag = False
-                                #===================================================
-                                # crossProd = (xIntersect1*yIntersect2) - (yIntersect1*xIntersect2)
-                                # distanceFromCenterToVector = ((self.xTestUnitVector -(int(self.xTestUnitVector)+0.5))**2) + ((self.yTestUnitVector -(int(self.yTestUnitVector)+0.5))**2)
-                                # pointInFlag = crossProd >= 0 and distanceFromCenterToVector <= 0.25
-                                #===================================================
                             except ZeroDivisionError:
                                 if (self.originX < centerPoint[0] < self.xTestUnitVector) or (self.xTestUnitVector < centerPoint[0] < self.originX):
                                     circleCheck = ((self.xTestUnitVector - centerPoint[0])**2) + ((self.yTestUnitVector - centerPoint[1])**2)
@@ -260,18 +210,7 @@ class Ray:
                                 else:
                                     pointInFlag = True
                             
-                            
-                        if not objectHitAlready and self.distanceToObstruction < renderingDistance and pointInFlag: #and (initialSpriteLevelX <= self.xTestUnitVector <= finalSpriteLevelX) and (initialSpriteLevelY <= self.yTestUnitVector <= finalSpriteLevelY):
-                            #===================================================
-                            # print((self.xTestUnitVector,self.yTestUnitVector))
-                            # print('y = ' + str(objLineSlope)+ 'x + ' + str(yOffset))
-                            # print('(x-' + str(centerPoint[0]) + ')^2 + (y-' + str(centerPoint[1]) + ')^2 = 0.25')
-                            # print((circleObjXIntersect1,circleObjYIntersect1))
-                            # print((circleObjXIntersect2,circleObjYIntersect2))
-                            # print('vec: ' + str(self.xTestUnitVector))
-                            # print('orig: '+ str(self.originX))
-                            # print((self.xTestUnitVector - self.originX))
-                            #===================================================
+                        if not objectHitAlready and self.distanceToObstruction < renderingDistance and pointInFlag:
                             if playerPerspectiveSlope != 0:
                                 try: 
                                     rayIntersectSlope = (self.yTestUnitVector - self.originY)/(self.xTestUnitVector - self.originX)
@@ -282,11 +221,6 @@ class Ray:
                                 
                                 if self.xTestUnitVector - self.originX != 0:
                                     intersectedY = (rayIntersectSlope*intersectedX) + yRayOffset
-                                #===================================================
-                                # print('first intersect: ' + str(((circleObjXIntersect1, circleObjYIntersect1))))
-                                # print('second intersect: ' + str(((circleObjXIntersect2, circleObjYIntersect2))))
-                                #===================================================
-                                
                                 try:
                                     percentageOfLine =  (intersectedX - circleObjXIntersect1)/(circleObjXIntersect2 - circleObjXIntersect1)
                                 except ZeroDivisionError:

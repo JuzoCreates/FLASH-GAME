@@ -6,6 +6,7 @@ import random
 import math
 import FLASH_inanimates
 import FLASH_rendering
+import FLASH_primarySettings as ps
 
 class Character:
     '''
@@ -21,7 +22,6 @@ class Character:
         self.charY = charY
         self.charDelX = charDelX
         self.charDelY = charDelY
-        
         
 class PlayerCharacter(Character):
     '''
@@ -46,8 +46,9 @@ class PlayerCharacter(Character):
     winning (int): integer displaying if the player has won or lost (0 = going to lose, 1 = going to win, 2 = playing)
     initialPos (Tuple[int]): the coordinates of the mouse when the game begins (sometimes not used if the player uses arrow keys)
     '''
-    def __init__(self,camera, charX, charY, charAngle, charDelAngle, movementControls, mouseFlag, renderingDistance, flashlightRenderingDistance):
-        super(PlayerCharacter, self).__init__(charX, charY, 0.0, 0.0)
+    def __init__(self, camera, charX, charY, charAngle, charDelAngle, movementControls, mouseFlag, renderingDistance, flashlightRenderingDistance):
+        super().__init__(charX, charY, 0.0, 0.0)
+        self.game_start_time = None
         self.playerCam = camera
         self.charAngle = charAngle
         self.charDelAngle = charDelAngle
@@ -56,13 +57,15 @@ class PlayerCharacter(Character):
         self.renderingDistance = renderingDistance
         self.flashlightRenderingDistance = flashlightRenderingDistance
         self.flashlight = FLASH_inanimates.Flashlight(False, 'B')
-        self.flashlightScreenDivision =  camera.screenWidth // 16
+        self.flashlightScreenDivision = camera.screenWidth // 16
+        self.is_flashing = False
+        self.flash_timer = 0 
+        self.extra_batteries = 2  
+        self.max_extra_batteries = 5
+        self.flashlight_level = 3  # Уровень заряда фонарика: 3=полный, 2=две полосы, 1=одна полоса, 0=половинчатая(пусто)
         self.moving = False
         self.hiding = False
         self.keyFlag = False
-        self.drain = 1
-        self.offTime = None
-        self.usage = None
         self.bLid = pg.Rect(0, 600, 800, 300)
         self.tLid = pg.Rect(0, -300, 800, 300)
         self.winning = 2
@@ -70,277 +73,182 @@ class PlayerCharacter(Character):
             self.initialPos = pg.mouse.get_pos()
 
     def physicalMovementCalculation(self, enteredKey, stepSound):
-        '''
-        Determines the amount the player character moves given a specific key and adjusts the player attribute accordingly
-        splits up the player's movement into x and y so it can be translated onto the map grid. Multiplied so the player is
-        going slow enough
-        ===============Parameters===============
-        enteredKey (pygame.key): the pressed key detected by pygame
-        stepSound (pygame.mixer.Sound): the sound that is used to create stepping audio
-        
-        returns nothing
-        '''
         if enteredKey in self.movementControls and not self.hiding:
             if enteredKey == self.movementControls[0]:
-                self.charDelX = (math.sin(self.charAngle)) * 0.05 #frameRate/200
-                self.charDelY = (math.cos(self.charAngle)) * 0.05 #frameRate/200
-    
+                self.charDelX = (math.sin(self.charAngle)) * 0.08
+                self.charDelY = (math.cos(self.charAngle)) * 0.08
             if enteredKey == self.movementControls[1]:
-                self.charDelX = - (math.sin(self.charAngle)) * 0.05 #frameRate/200
-                self.charDelY = - (math.cos(self.charAngle)) * 0.05 #frameRate/200
-    
+                self.charDelX = - (math.sin(self.charAngle)) * 0.08
+                self.charDelY = - (math.cos(self.charAngle)) * 0.08
             if enteredKey == self.movementControls[2]:
                 leftAngle = self.charAngle + (math.pi/2)
-                self.charDelX = (-math.sin(leftAngle)) * 0.05 #frameRate/200
-                self.charDelY = (-math.cos(leftAngle)) * 0.05 #frameRate/200
-    
+                self.charDelX = (-math.sin(leftAngle)) * 0.08
+                self.charDelY = (-math.cos(leftAngle)) * 0.08
             if enteredKey == self.movementControls[3]:
                 leftAngle = self.charAngle + (math.pi/2)
-                self.charDelX = (math.sin(leftAngle)) * 0.05 #frameRate/200
-                self.charDelY = (math.cos(leftAngle)) * 0.05 #frameRate/200
-            
+                self.charDelX = (math.sin(leftAngle)) * 0.08
+                self.charDelY = (math.cos(leftAngle)) * 0.08
             if self.moving == False:
                 stepSound.play(loops=-1)
                 self.moving = True
-            
-        
+
     def physicalMover(self, gameMap, pickupSound, discoverySound):
-        '''
-        Depending on whether the player is walking over the ground or not, moves the player by checking if the position
-        is on the floor. Also handles pickups and exiting the map
-        ===============Parameters===============
-        gameMap (GameMap): the map object that describes the game's 2D version of the map
-        pickupSound (pygame.mixer.Sound): the sound that is played when a battery is picked up
-        discoverySound (pygame.mixer.Sound): the sound that is played when a key is picked up
-        
-        returns nothing
-        '''
-        wallStopperX =  math.copysign(0.1, self.charDelX)
-        wallStopperY = math.copysign(0.1, self.charDelY)
-        # I THINK THIS IS WHERE U PUT A TRY STATEMENT FOR WINNING
-        if gameMap.mapArray[int(self.charY + self.charDelY + wallStopperY)][int(self.charX +self.charDelX + wallStopperX)] == '.' or gameMap.mapArray[int(self.charY + self.charDelY + wallStopperY)][int(self.charX +self.charDelX + wallStopperX)] == 'B' or gameMap.mapArray[int(self.charY + self.charDelY + wallStopperY)][int(self.charX +self.charDelX + wallStopperX)] == 'K' and not self.hiding:
-            if gameMap.mapArray[int(self.charY + self.charDelY + wallStopperY)][int(self.charX +self.charDelX + wallStopperX)] == 'B':
-                gameMap.removeChar((int(self.charX +self.charDelX + wallStopperX),int(self.charY + self.charDelY + wallStopperY)))
-                if self.flashlight.batteries.power <= 60:
-                    self.flashlight.batteries.power += 30
-                else:
-                    self.flashlight.batteries.power = 90
-                pickupSound.play()
-            elif gameMap.mapArray[int(self.charY + self.charDelY + wallStopperY)][int(self.charX +self.charDelX + wallStopperX)] == 'K':
-                self.keyFlag = True
-                gameMap.removeChar((int(self.charX +self.charDelX + wallStopperX),int(self.charY + self.charDelY + wallStopperY)))
-                gameMap.removeChar(gameMap.exitCoord)
-                discoverySound.play()
-            
-            elif int(self.charX +self.charDelX) == gameMap.exitCoord[0] and int(self.charY + self.charDelY) == gameMap.exitCoord[1]:
-                self.winning = 1
-    
-                 
-            
-            self.charX += self.charDelX
-            self.charY += self.charDelY
+        target_x = self.charX + self.charDelX
+        target_y = self.charY + self.charDelY
+        if (0 <= target_x < gameMap.width and 
+            0 <= target_y < gameMap.height and
+            not self.hiding):
+            target_cell = gameMap.mapArray[int(target_y)][int(target_x)]
+            if target_cell in ['.', 'B', 'K', 'E']:
+                if target_cell == 'B':
+                    gameMap.mapArray[int(target_y)][int(target_x)] = '.'
+                    if self.extra_batteries < self.max_extra_batteries:
+                        self.extra_batteries += 1
+                        pickupSound.play()
+                        print(f"Batteries collected: {self.extra_batteries}/{self.max_extra_batteries}")
+                    else:
+                        print("Inventory full! Cannot collect more batteries.")
+                        pickupSound.play()
+                elif target_cell == 'K':
+                    self.keyFlag = True
+                    gameMap.mapArray[int(target_y)][int(target_x)] = '.'
+                    discoverySound.play()
+                    print("You found a key! The door is unlocked!")
+                elif target_cell == 'E':
+                    if self.keyFlag: 
+                        self.winning = 1
+                        print("Exit found! You win!")
+                        return
+                    else:
+                        print("A key is needed to open the door!")
+                        return
+                if target_cell != 'E' or not self.keyFlag:
+                    self.charX = target_x
+                    self.charY = target_y
 
     def stopPhysicalMovement(self, enteredKey, stepSound):
-        '''
-        Stops player movement by testing if the raised key is one of the movementControls
-        ===============Parameters===============
-        enteredKey (pygame.Key): the raised key
-        stepSound (pygame.mixer.Sound): the sound that must be stopped if the player is no longer moving
-        
-        returns nothing
-        '''
         if enteredKey in self.movementControls:
             self.charDelX = 0.0
             self.charDelY = 0.0
             self.moving = False
             stepSound.stop()
-    
+
     def perspectiveMovementCalculation(self, enteredKey):
-        '''
-        Calculates the player's angle movement depending on their control scheme
-        if keys, simply checks pressed keys and adjusts change in angle appropriately
-        if mouse, checks if mouse is to the left or right of the original mouse position
-        ===============Parameters===============
-        enteredKey (pygame.key/None): the pressed key detected by pygame (given None if control scheme uses mouse)
-        
-        returns nothing
-        '''
         if not self.mouseFlag:
             if enteredKey == pg.K_LEFT:
-                self.charDelAngle = -0.03 #* frameRate*1.5
+                self.charDelAngle = -0.07
             elif enteredKey == pg.K_RIGHT:
-                self.charDelAngle = 0.03 #* frameRate*1.5
+                self.charDelAngle = 0.07
         else:
             if pg.mouse.get_focused():
                 if pg.mouse.get_pos()[0] < self.initialPos[0]:
-                    self.charDelAngle = -0.03 #* frameRate *1.5
-                    
+                    self.charDelAngle = -0.07
                 elif pg.mouse.get_pos()[0] > self.initialPos[0]:
-                    self.charDelAngle = 0.03#* frameRate*1.5
-                    
+                    self.charDelAngle = 0.07
                 elif self.charDelAngle != 0:
                     self.charDelAngle = 0
 
     def perspectiveMover(self):
-        '''
-        Moves the player's angle according to the calculated difference in angle positions
-        ===============Parameters===============
-        ------------------NONE------------------
-        
-        returns nothing
-        '''
         if not self.hiding:
             self.charAngle += self.charDelAngle
-    
+
     def perspectiveStop(self, enteredKey):
-        '''
-        Stops the angle movement if the player's released key is the correct key
-        ===============Parameters===============
-        enteredKey (pygame.key): the released key detected by pygame
-        
-        returns nothing
-        '''
         if (self.charDelAngle < 0 and enteredKey == pg.K_LEFT) or (self.charDelAngle > 0 and enteredKey == pg.K_RIGHT):
             self.charDelAngle = 0
-            
-    def flashlightSwitch(self, enteredKey):
-        '''
-        Begins the flashlight's switching process
-        ===============Parameters===============
-        enteredKey (pygame.key): the key that determines if the player wants to switch the flashlight's status
-        
-        returns nothing
-        '''
-        if enteredKey == pg.K_f and self.flashlight.batteries.power > 0 and not self.hiding:
-            self.flashlight.switching[0] = True
-            self.flashlight.frame = 0
-            
-    def hideSwitch(self, enteredKey, window, clock, texturesToLoad, gameMap, enemy, UIDict, flashlightSound, stepSound, rayIncrementor, fog, fog_level, fog_rect):
-        '''
-        Begins the player's hiding process if the player presses 'h'
-        ===============Parameters===============
-        enteredKey (pygame.key): the key that determines if the player wants to hide
-        window (pygame.display): the window to draw the hiding process to
-        clock (pygame.clock): the clock that spaces out how the blinking is drawn
-        texturesToLoad (Dict[string:pygame.image): the dictionary that determines which image to draw
-        gameMap (Map): the map object that determines where the player walks and where other objects are
-        enemy (ShadowMonster): the enemy object that determines the actions it should take
-        UIDict (Dict[string:pygame.image]): the dictionary that determines which images in the players information display to draw
-        flashlightSound (pygame.mixer.Sound): the sound played when the flashlight is switched, only used in the hide function when calling the flashlightControl function
-        stepSound (pygame.mixer.Sound): the sound played when the player is stepping
-        rayIncrementor (float): the value determining how much the ray is extended before its checked, used in hide function in renderPlayerView function
-        fog (pygame.image): the image that overlays the player's vision if the monster is using fog as a move
-        fog_level (int): the integer that determines the opacity of the fog image
-        fog_rect (pygame.Rect): the rectangle that determines the size and position of the fog image
-        
-        returns int
-        '''
-        if enteredKey == pg.K_h:
-            fog_level = self.hide(window, clock, texturesToLoad, gameMap, enemy, UIDict, flashlightSound, stepSound, rayIncrementor, fog, fog_level, fog_rect)
-        
-        return fog_level
-    def flashlightControl(self, window, shadow, switchSound):
-        '''
-        Draws the flashlight to the screen depending on if it's switching position or on and being used. If the player has run out of battery, force the flashlight away and
-        indicate player loss
-        ===============Parameters===============
-        window (pygame.display): the window to draw the flashlight's position to 
-        shadow (ShadowMonster): shadow monster object used for the deplete function
-        switchSound (pygame.mixer.Sound): the sound played when the flashlight is turned off
-        
-        returns nothing
-        '''
-        if self.flashlight.frame < 12:
-            self.flashlight.drawChanges(window,switchSound)
 
-        if self.flashlight.onStatus and not self.flashlight.switching[0] and not self.hiding:
-            self.flashlight.drawStableState(window)
-        
-        self.flashlight.batteries.deplete(self.flashlight.onStatus, shadow)
-        
-        if self.flashlight.batteries.power <= 0:
-            if self.flashlight.onStatus and not self.flashlight.switching[0] and not self.hiding:
-                self.flashlight.switching[0] = True
-                self.flashlight.frame = 0
-            self.winning = 0    
-          
-    def renderPlayerView(self, gameMap, groundChar, wallChars, texturesToLoad, shadow, rayIncrementor):
-        '''
-        Renders the player's view according to whether their flashlight is on or not
-        if on, render 10/16 of the screen as if the flashlight were off (rendering distance is low) and 3/8 of the screen with an extended rendering distance
-        if off, render the whole screen with low rendering distance
-        after that, render any objects the rays hit
-        ===============Parameters===============
-        gameMap (GameMap): the map object, with an array that is used to determine whether a ray is hitting anything or not
-        groundChar (char): the character that indicates a position is the ground
-        wallChar (char): the character that indicates a position is the wall
-        texturesToLoad (Dict[string:pygame.image]): the dictionary that determines which image to use
-        shadow (ShadowMonster): the monster object used to determine if a hallucination has been shone away or not
-        rayIncrementor (float): the number used to determine how far a ray is extended before it's checked for collision      
-        
-        returns nothing
-        '''
-        nonFlashlightSections = self.flashlightScreenDivision * 5
-        flashlightSection = nonFlashlightSections + (self.flashlightScreenDivision*6)
-        rayHitsList = []
-        if self.flashlight.onStatus:
-            for horizontalScreenPixel in range(0, (nonFlashlightSections + 1), self.playerCam.screenIterator):
-                currentRayAngle = (self.charAngle - (self.playerCam.fov/2)) + ((horizontalScreenPixel/self.playerCam.screenWidth) * self.playerCam.fov)
-                extendedRay = FLASH_rendering.Ray(self.charX, self.charY, currentRayAngle, rayIncrementor)
-                extendedRay.rayCast(gameMap, groundChar, wallChars, self.renderingDistance)
-                if extendedRay.objectsHit !=[]:
-                    rayHitsList.append([extendedRay, horizontalScreenPixel, False])
-                self.playerCam.renderWalls(extendedRay, self.renderingDistance, horizontalScreenPixel, texturesToLoad, self.charY, self.flashlight.onStatus, self.flashlightRenderingDistance)
-            
-            for horizontalScreenPixel in range(nonFlashlightSections, (flashlightSection + 1), self.playerCam.screenIterator):
-                currentRayAngle = (self.charAngle - (self.playerCam.fov/2)) + ((horizontalScreenPixel/self.playerCam.screenWidth) * self.playerCam.fov)
-                extendedRay = FLASH_rendering.Ray(self.charX, self.charY, currentRayAngle, rayIncrementor)
-                extendedRay.rayCast(gameMap, groundChar, wallChars, self.flashlightRenderingDistance)
-                if extendedRay.objectsHit !=[]:
-                    rayHitsList.append([extendedRay, horizontalScreenPixel, self.flashlight.onStatus])
-                self.playerCam.renderWalls(extendedRay, self.flashlightRenderingDistance, horizontalScreenPixel, texturesToLoad, self.charY, self.flashlight.onStatus, self.flashlightRenderingDistance)
-            
-            for horizontalScreenPixel in range(flashlightSection, (flashlightSection + nonFlashlightSections + 1), self.playerCam.screenIterator):
-                currentRayAngle = (self.charAngle - (self.playerCam.fov/2)) + ((horizontalScreenPixel/self.playerCam.screenWidth) * self.playerCam.fov)
-                extendedRay = FLASH_rendering.Ray(self.charX, self.charY, currentRayAngle, rayIncrementor)
-                extendedRay.rayCast(gameMap, groundChar, wallChars, self.renderingDistance)
-                if extendedRay.objectsHit !=[]:
-                    rayHitsList.append([extendedRay, horizontalScreenPixel, False])
-                self.playerCam.renderWalls(extendedRay, self.renderingDistance, horizontalScreenPixel, texturesToLoad, self.charY, self.flashlight.onStatus, self.flashlightRenderingDistance)
-            
-        else:
-            for horizontalScreenPixel in range(0, self.playerCam.screenWidth + 1, self.playerCam.screenIterator):
-                currentRayAngle = (self.charAngle - (self.playerCam.fov/2)) + ((horizontalScreenPixel/self.playerCam.screenWidth) * self.playerCam.fov)
-                extendedRay = FLASH_rendering.Ray(self.charX, self.charY, currentRayAngle, rayIncrementor)
-                extendedRay.rayCast(gameMap, groundChar, wallChars, self.renderingDistance)
-                if extendedRay.objectsHit !=[]:
-                    rayHitsList.append([extendedRay, horizontalScreenPixel, self.flashlight.onStatus])
-                self.playerCam.renderWalls(extendedRay, self.renderingDistance, horizontalScreenPixel, texturesToLoad, self.charY, self.flashlight.onStatus, self.flashlightRenderingDistance)
-        
-        for rayData in rayHitsList:
-            if rayData[2]:
-                self.playerCam.renderMapElements(rayData[0], texturesToLoad, self.flashlightRenderingDistance, self.flashlightRenderingDistance, rayData[1], gameMap, shadow)
+    def flashlightFlash(self, shadow):
+        """Создает реальную вспышку, которая мгновенно освещает карту"""
+        if self.flashlight_level > 0 and not self.hiding and not self.is_flashing:
+            # Устанавливаем состояние вспышки
+            self.is_flashing = True
+            self.flash_timer = 500  # 500 мс = 0.5 секунды длительность вспышки
+       
+            # Уменьшаем уровень заряда фонарика
+            self.flashlight_level -= 1
+            print(f"Flashlight flashed! Battery level: {self.flashlight_level}")
+    
+            # Временно включаем фонарик для визуального эффекта
+            self.flashlight.onStatus = True
+    
+            # Проверяем, монстр ли в зоне вспышки
+            if shadow.get_distance_to_player(self) < 6:
+                shadow.state = "scared"
+                shadow.scared_timer = 5.0
+                shadow.is_flashed = True
+                print("Monster is flashed and scared for 5 seconds!")
             else:
-                self.playerCam.renderMapElements(rayData[0], texturesToLoad, self.renderingDistance, self.flashlightRenderingDistance, rayData[1], gameMap, shadow)
+                print("No monster in flash range.")
+        else:
+            if self.flashlight_level <= 0:
+                print("Flashlight battery is empty! Recharge first.")
+            elif self.hiding:
+                print("Cannot flash while hiding!")
+            elif self.is_flashing:
+                print("Flashlight is already flashing!")
+
+    
+    def drawFlashlightUI(self, window):
+        """Отрисовывает фонарик в правом нижнем углу без зазоров"""
+
+        # Убедитесь, что у PlayerCharacter есть доступ к UI изображениям
+        if not hasattr(self, 'UI') or self.UI is None:
+            print("ERROR: PlayerCharacter has no UI reference!")
+            return
+
+        if self.is_flashing:
+            # Используем текстуру включенного фонарика для вспышки
+            flashlight_img = self.UI['flashlight_on']
+        elif self.flashlight.onStatus:
+            flashlight_img = self.UI['flashlight_on']
+        else:
+            flashlight_img = self.UI['flashlight_off']
+    
+        # Позиция в самом углу без зазоров
+        pos_x = window.get_width() - flashlight_img.get_width()
+        pos_y = window.get_height() - flashlight_img.get_height()
+    
+        window.blit(flashlight_img, (pos_x, pos_y))
+ 
+    def recharge_flashlight(self):
+        """Перезаряжает фонарик одной батарейкой из запаса"""
+        if self.extra_batteries > 0 and self.flashlight_level < 3:
+            self.extra_batteries -= 1
+            self.flashlight_level += 1
+            print(f"Flashlight recharged! Battery level: {self.flashlight_level}, Spare batteries: {self.extra_batteries}")
+            return True
+        else:
+            if self.extra_batteries <= 0:
+                print("No spare batteries left!")
+            elif self.flashlight_level >= 3:
+                print("Flashlight is already full!")
+            return False
+
+    def renderPlayerView(self, gameMap, groundChar, wallChars, texturesToLoad, shadow, rayIncrementor):
+        # Если идет вспышка, используем увеличенную дистанцию рендеринга
+        if self.is_flashing:
+            current_rendering_distance = self.flashlightRenderingDistance * 0.5
+        else:
+            current_rendering_distance = self.renderingDistance
+    
+        for horizontalScreenPixel in range(0, self.playerCam.screenWidth + 1, self.playerCam.screenIterator):
+            currentRayAngle = (self.charAngle - (self.playerCam.fov/2)) + ((horizontalScreenPixel/self.playerCam.screenWidth) * self.playerCam.fov)
+            extendedRay = FLASH_rendering.Ray(self.charX, self.charY, currentRayAngle, rayIncrementor)
+            extendedRay.rayCast(gameMap, groundChar, wallChars, current_rendering_distance)
         
+            # Для вспышки используем уменьшенное затемнение
+            if self.is_flashing:
+                self.playerCam.renderWalls(extendedRay, current_rendering_distance, horizontalScreenPixel, texturesToLoad, self.charY, True, self.flashlightRenderingDistance)
+                self.playerCam.renderMapElements(extendedRay, texturesToLoad, current_rendering_distance, self.flashlightRenderingDistance, horizontalScreenPixel, gameMap, shadow)
+            else:
+                self.playerCam.renderWalls(extendedRay, current_rendering_distance, horizontalScreenPixel, texturesToLoad, self.charY, False, self.flashlightRenderingDistance)
+                self.playerCam.renderMapElements(extendedRay, texturesToLoad, current_rendering_distance, self.flashlightRenderingDistance, horizontalScreenPixel, gameMap, shadow)
+
+    def hideSwitch(self, enteredKey, window, clock, texturesToLoad, gameMap, shadow, UIDict, flashlightSound, stepSound, rayIncrementor, fog, fog_level, fog_rect):
+        if enteredKey == pg.K_h:
+            fog_level = self.hide(window, clock, texturesToLoad, gameMap, shadow, UIDict, flashlightSound, stepSound, rayIncrementor, fog, fog_level, fog_rect)
+        return fog_level
+
     def hide(self, window, clock, texturesToLoad, gameMap, shadow, UIDict, flashlightSound, stepSound, rayIncrementor, fog, fog_level, fog_rect):
-        '''
-        Closes the players 'eyes' by extending two black rectangles down or up depending on what the player wants, (also must draw the view again when opening eyes)
-        making the player invisible to the enemy upon pressing 'h'
-        ===============Parameters===============
-        most of these parameters are used for the drawing functions, the ones not used for
-        drawing functions will be explained:
-        clock (pygame.time.Clock): Measures internal framerate and the speed at which screen is covered.
-        shadow (ShadowMonster): used to change the monster's behaviour if the player is hiding
-        UIDict (Dict[string:pygame.image]): the dictionary used to draw the parts of the screen that are there for user information
-        flashlightSound (pygame.mixer.Sound): the sound played when the flashlight is switched
-        stepSound (pygame.mixer.Sound): the sound played when the player is moving
-        fog (pygame.image): the image that overlays the player's vision if the monster is using fog as a move
-        fog_level (int): the integer that determines the opacity of the fog image
-        fog_rect (pygame.Rect): the rectangle that determines the size and position of the fog image
-        
-        returns int
-        '''
         if not self.hiding:
             if shadow.spook == True:
                 shadow.spook = False
@@ -352,10 +260,9 @@ class PlayerCharacter(Character):
                         pg.quit()
                         sys.exit()
                 clock.tick(90)
-                self.flashlightControl(window, shadow, flashlightSound)
                 pg.draw.rect(window, (0, 0, 0), self.bLid)
                 pg.draw.rect(window, (0, 0, 0), self.tLid)
-                self.flashlight.batteries.drawBatteryLevel(window, UIDict)
+                # self.flashlight.batteries.drawBatteryLevel(window, UIDict)
                 if self.keyFlag:
                     window.blit(UIDict['key'], (window.get_width() - UIDict['key'].get_width(), 0))
                 self.bLid.top -= 4
@@ -380,407 +287,604 @@ class PlayerCharacter(Character):
                         fog_level -= 1
                 fog.set_alpha(fog_level)
                 window.blit(fog, fog_rect)
-                self.flashlightControl(window, shadow, flashlightSound)
                 pg.draw.rect(window, (0, 0, 0), self.bLid)
                 pg.draw.rect(window, (0, 0, 0), self.tLid)
-                self.flashlight.batteries.drawBatteryLevel(window, UIDict)
+                # self.flashlight.batteries.drawBatteryLevel(window, UIDict)
                 if self.keyFlag:
                     window.blit(UIDict['key'], (window.get_width() - UIDict['key'].get_width(), 0))
                 self.bLid.top += 4
                 self.tLid.top -= 4
                 pg.display.update()
-        
         return fog_level
 
     def loss(self, clock, window, gameMap, groundChar, wallChars, texturesToLoad, UIDict, cutscene, shadow, overScreen, overSound, jumpscareSound, swoosh, rayIncrementor):
         '''
-        Shows the player a loss sequence after they meet one of the appropriate conditions
-        Begin by fading the screen to black
-        Play a cutscene sequence, then have a random delay before the final jumpscare
-        Display the loss image before returning to menu
-        ===============Parameters===============
-        clock (pygame.time.Clock): Measures internal framerate and the speed at which screen is covered.
-        window (pygame.display): the display the whole sequence is drawn to
-        gameMap (GameMap): map object used to render the map from the player perspective
-        groundChar (char): character used for rendering
-        wallChars (List[char]): characters used for rendering
-        texturesToLoad (Dict[string:pygame.image): the dictionary used to draw the various textures that must be rendered
-        UIDict (Dict[string:pygame.image]): the dictionary used to draw the parts of the screen that are there for user information
-        cutscene (List[string]): the list of image names that describe the cutscene that will be rendered
-        shadow (ShadowMonster): monster object used in the render player view, but not really required in this instance, as stopping hallucinations before the player loses is pointless
-        overScreen (pygame.image): the image that displays the player's loss with art
-        overSound (pygame.mixer.Sound): the sound played when the overScreen image is shown
-        jumpscareSound (pygame.mixer.Sound): the sound played when the shadow monster image jumps up on the screen
-        swoosh (pygame.mixer.Sound): the sound played when the shadow's hallucination move across the screen
-        rayIncrementor (float): the amount the ray is extended before it's position is checked
-        
-        returns nothing
+        Enhanced loss sequence with smoother transitions and better timing
         '''
         startTime = pg.time.get_ticks()
         screenFill = False
-        rect = pg.Surface((800,600))
+        rect = pg.Surface((window.get_width(), window.get_height()))
         colour = pg.Color(0,0,0,255)
         rect.fill(colour)
+
+        # Fade to black while still showing the game view
         while not screenFill:
             for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-            clock.tick(90)
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_RETURN:  # Allow skipping with Enter
+                        screenFill = True
+                        break
+    
+            clock.tick(60)
             lossTime = pg.time.get_ticks()
-            timeDiff = lossTime-startTime
-            if timeDiff > 6000:
-                timeDiff = 6000
-            percent = timeDiff/6000
-            rect.set_alpha(255*percent)
+            timeDiff = lossTime - startTime
+            if timeDiff > 4000:  # Reduced from 6000 for better pacing
+                timeDiff = 4000
+            percent = timeDiff / 4000
+    
+            # Render the final game view
+            window.fill((0, 0, 0))
             self.renderPlayerView(gameMap, groundChar, wallChars, texturesToLoad, shadow, rayIncrementor)
+    
+            # Apply fading black overlay
+            rect.set_alpha(255 * percent)
             window.blit(rect, (0,0))
+    
+            # Draw UI elements
             if self.keyFlag:
                 window.blit(UIDict['key'], (window.get_width() - UIDict['key'].get_width(), 0))
-            self.flashlight.batteries.drawBatteryLevel(window, UIDict)
+            # self.flashlight.batteries.drawBatteryLevel(window, UIDict)  # Commented out as per your original
+    
             pg.display.update()
-            
-            if timeDiff == 6000:
+    
+            if timeDiff == 4000:
                 screenFill = True
+
+        # Start the jump scare cutscene
         window.fill((0,0,0))
         swoosh.set_volume(0.8)
-        scareDelay = random.randint(3000,4500)
-        for image in cutscene:
-            pg.event.get()
-            clock.tick(8)
+        scareDelay = random.randint(2000, 3500)  # Reduced delay for better pacing
+
+        # Load all cutscene images first for smoother playback
+        cutscene_images = []
+        for image_name in cutscene:
+            img_path = os.path.join(os.path.dirname('__file__'), 'FLASH_JumpScare', image_name)
+            imToLoad = pg.image.load(img_path).convert_alpha()
+            # Scale image to window size if needed
+            if imToLoad.get_size() != (window.get_width(), window.get_height()):
+                imToLoad = pg.transform.scale(imToLoad, (window.get_width(), window.get_height()))
+            cutscene_images.append(imToLoad)
+
+        # Play cutscene with improved timing - увеличены задержки для более долгого скримера
+        for i, image in enumerate(cutscene_images):
+            # Check for quit events
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_RETURN:  # Skip cutscene with Enter
+                        break
+     
             window.fill((0,0,0))
-            imToLoad = pg.image.load(os.path.join(os.path.dirname('__file__'), 'FLASH_JumpScare', image)).convert_alpha()
-            if image != 'FLASH_21.png' and image != 'FLASH_02.png':
-                if image == 'FLASH_05.png' or  image == 'FLASH_10.png':
-                    #or image == 'FLASH_13.png':
+            original_image_name = cutscene[i]
+     
+            # Special handling for specific frames - увеличены задержки
+            if original_image_name != 'FLASH_21.png' and original_image_name != 'FLASH_02.png':
+                if original_image_name == 'FLASH_05.png' or original_image_name == 'FLASH_10.png':
                     swoosh.play()
-                elif image == 'FLASH_22.png':
+                elif original_image_name == 'FLASH_22.png':
                     jumpscareSound.play()
-                    pg.mixer.fadeout(1500)
-                window.blit(imToLoad, (0,0))
-            elif image == 'FLASH_02.png':
-                window.blit(imToLoad, (0,0))
+                    pg.mixer.fadeout(1500)  # Увеличен fadeout
+         
+                window.blit(image, (0,0))
                 pg.display.update()
-                pg.time.delay(1000)
+                clock.tick(8)  # Немного замедлен кадр для более долгого показа
+         
+            elif original_image_name == 'FLASH_02.png':
+                window.blit(image, (0,0))
+                pg.display.update()
+                pg.time.delay(500)  # Увеличенная задержка
                 swoosh.play()
-            else:
-                window.blit(imToLoad, (0,0))
+         
+            else:  # FLASH_21.png - the big scare
+                window.blit(image, (0,0))
                 pg.display.update()
-                pg.time.delay(scareDelay)
-            
-            pg.display.update()
-        
-        pg.time.delay(3000)
+                # Увеличенная задержка для главного скримера
+                main_scare_delay = random.randint(2500, 4000)  # Увеличен диапазон
+                pg.time.delay(main_scare_delay)
+ 
+        # Transition to game over screen
+        pg.time.delay(1500)  # Увеличенная задержка после скримера
         window.fill((0,0,0))
         pg.display.update()
-        pg.time.delay(1000)
+        pg.time.delay(1000)   # Увеличенная задержка
+ 
+        # Scale game over screen to window size
+        overScreen_scaled = pg.transform.scale(overScreen, (window.get_width(), window.get_height()))
+ 
+        # Fade in game over screen
+        secondStartTime = pg.time.get_ticks()
+        secondScreenFill = False
         overSound.play()
-        secondStartTime = pg.time.get_ticks()
-        secondScreenFill = False
+ 
+        fade_surface = pg.Surface((window.get_width(), window.get_height()))
+        fade_surface.fill((0, 0, 0))
+ 
         while not secondScreenFill:
             for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-            clock.tick(90)
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_RETURN:  # Skip with Enter
+                        secondScreenFill = True
+                        break
+     
+            clock.tick(60)
             overTime = pg.time.get_ticks()
-            timeDiff = overTime-secondStartTime
-            if timeDiff > 6000:
-                timeDiff = 6000
-            percent = timeDiff/6000
-            rect.set_alpha(255 - (255*percent))
-            window.blit(overScreen, (0,0))
-            window.blit(rect, (0,0))
+            timeDiff = overTime - secondStartTime
+            if timeDiff > 2000:  # Ускоренный fade-in (2 секунды)
+                timeDiff = 2000
+ 
+            percent = timeDiff / 2000
+            fade_surface.set_alpha(255 * (1 - percent))  # Fading out the black overlay
+     
+            window.blit(overScreen_scaled, (0,0))
+            window.blit(fade_surface, (0,0))
             pg.display.update()
-            
-            if timeDiff == 6000:
+     
+            if timeDiff == 2000:
                 secondScreenFill = True
-        window.fill((0,0,0))
-    
-        pg.time.delay(3000)
-        
+
+        # Показываем Game Over экран ровно 1.5 секунды
+        pg.time.delay(1500)
+
+        # Затем быстро исчезаем (примерно 1.5 секунды)
         startTime = pg.time.get_ticks()
         screenFill = False
-        rect = pg.Surface((800,600))
-        colour = pg.Color(0,0,0,255)
-        rect.fill(colour)
+ 
         while not screenFill:
             for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-            clock.tick(90)
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_RETURN:  # Skip with Enter
+                        screenFill = True
+                        break
+     
+            clock.tick(60)
             fadeOutTime = pg.time.get_ticks()
-            timeDiff = fadeOutTime-startTime
-            if timeDiff > 6000:
-                timeDiff = 6000
-            percent = timeDiff/6000
-            rect.set_alpha(255*percent)
-            window.blit(overScreen,(0,0))
-            window.blit(rect, (0,0))
+            timeDiff = fadeOutTime - startTime
+            if timeDiff > 1500:  # Fade-out за 1.5 секунды
+                timeDiff = 1500
+
+            percent = timeDiff / 1500
+            fade_surface.set_alpha(255 * percent)
+        
+            window.blit(overScreen_scaled, (0,0))
+            window.blit(fade_surface, (0,0))
             pg.display.update()
-            
-            if timeDiff == 6000:
+
+            if timeDiff == 1500:
                 screenFill = True
-    
-    def win(self, window, clock, gameMap, groundChar, wallChars, texturesToLoad, UIDict, shadow, rayIncrementor, difficulty, winScreen):
-        '''
-        Shows the player a win sequence after they exit the maze
-        Begin by fading the screen to black
-        Display the win image with the time it took for the player to win
-        Fade the screen to black before returning to main menu
-        ===============Parameters===============
-        window (pygame.display): the display the whole sequence is drawn to
-        clock (pygame.time.Clock): Measures internal framerate and the speed at which screen is covered.
-        gameMap (GameMap): map object used to render the map from the player perspective
-        groundChar (char): character used for rendering
-        wallChars (List[char]): characters used for rendering
-        texturesToLoad (Dict[string:pygame.image): the dictionary used to draw the various textures that must be rendered
-        UIDict (Dict[string:pygame.image]): the dictionary used to draw the parts of the screen that are there for user information
-        shadow (ShadowMonster): monster object used in the render player view, but not really required in this instance, as stopping hallucinations before the player wins is pointless
-        rayIncrementor (float): the amount the ray is extended before it's position is checked
-        difficulty (string): the difficulty of the game, used for record keeping purposes in the win screen
-        winScreen (pygame.image): the image that informs the player they escaped and the time they left in
-        
-        returns nothing
-        '''
-        escapeTime = (int(shadow.moveOpportunity)) / 60
-        if escapeTime >= 10:
-            seconds = str(escapeTime)[3:5]
-            selTwo = 2
-        else:
-            seconds = str(escapeTime)[2:4]
-            selTwo = 1
-        
-        seconds = int(int(seconds) * 0.6)
-        if 0 <= seconds <= 9:
-            seconds = str(seconds)
-            seconds = '0' + seconds
-        seconds = str(seconds)
-        escapeTime = str(escapeTime)
-        day = date.today()
-        font = pg.font.SysFont(None, 60)
-        file = open('FLASH_Scores.txt','a+')
-        recordTimes = file.write('\nTime:' + escapeTime[0:selTwo] + ':' + seconds + ' (' + str(day) + ') (' + difficulty + ')\n')
-        timeDisplay = font.render((escapeTime[0:selTwo] + ':' + seconds), True, ((255, 255, 255)), None)
-        file.close()
-        
-        startTime = pg.time.get_ticks()
-        screenFill = False
-        rect = pg.Surface((800,600))
-        colour = pg.Color(0,0,0,255)
-        rect.fill(colour)
-        while not screenFill:
-            for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-            clock.tick(90)
-            winTime = pg.time.get_ticks()
-            timeDiff = winTime-startTime
-            if timeDiff > 6000:
-                timeDiff = 6000
-            percent = timeDiff/6000
-            rect.set_alpha(255*percent)
-            self.renderPlayerView(gameMap, groundChar, wallChars, texturesToLoad, shadow, rayIncrementor)
-            if self.keyFlag:
-                window.blit(UIDict['key'], (window.get_width() - UIDict['key'].get_width(), 0))
-            self.flashlight.batteries.drawBatteryLevel(window, UIDict)
-            window.blit(rect, (0,0))
-            pg.display.update()
-            
-            if timeDiff == 6000:
-                screenFill = True
-        
+ 
         window.fill((0,0,0))
         pg.display.update()
-        rect = pg.Surface((800,600))
-        colour = pg.Color(0,0,0,255)
-        rect.fill(colour)
-        secondStartTime = pg.time.get_ticks()
-        secondScreenFill = False
-        while not secondScreenFill:
-            for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-            clock.tick(90)
-            overTime = pg.time.get_ticks()
-            timeDiff = overTime-secondStartTime
-            if timeDiff > 6000:
-                timeDiff = 6000
-            percent = timeDiff/6000
-            rect.set_alpha(255 - (255*percent))
-            window.blit(winScreen, (0, 0))
-            window.blit(timeDisplay,((350,270),(130,80)))
-            window.blit(rect, (0,0))
-            pg.display.update()
-            
-            if timeDiff == 6000:
-                secondScreenFill = True
-        
-        startTime = pg.time.get_ticks()
-        screenFill = False
-        rect = pg.Surface((800,600))
-        colour = pg.Color(0,0,0,255)
-        rect.fill(colour)
-        while not screenFill:
-            for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        sys.exit()
-            clock.tick(90)
-            fadeOutTime = pg.time.get_ticks()
-            timeDiff = fadeOutTime-startTime
-            if timeDiff > 6000:
-                timeDiff = 6000
-            percent = timeDiff/6000
-            rect.set_alpha(255*percent)
-            window.blit(winScreen,(0,0))
-            window.blit(timeDisplay,((350,270),(130,80)))
-            window.blit(rect, (0,0))
-            pg.display.update()
-            
-            if timeDiff == 6000:
-                screenFill = True
-        
-        
-class ShadowMonster(FLASH_inanimates.MapElement):
-    '''
-    Describes the enemy that hunts the player throughout the game. Inherits from the MapElement class
+
+    def win(self, window, clock, gameMap, groundChar, wallChars, texturesToLoad, UIDict, shadow, rayIncrementor, difficulty, win_screen):
+        """Display win screen when player escapes"""
+        # Stop any movement
+        self.charDelX = 0.0
+        self.charDelY = 0.0
+
+        # Calculate play time
+        if self.game_start_time:
+            play_time_seconds = (pg.time.get_ticks() - self.game_start_time) / 1000
+        else:
+            play_time_seconds = 0
+
+        # Format time as minutes:seconds
+        minutes = int(play_time_seconds // 60)
+        seconds = int(play_time_seconds % 60)
+        time_string = f"{minutes:02d}:{seconds:02d}"
+
+        self.save_score(difficulty, time_string)
+
+        # Scale win screen to window size
+        win_screen_scaled = pg.transform.scale(win_screen, (window.get_width(), window.get_height()))
+
+        # Create surfaces for rendering
+        fade_surface = pg.Surface((window.get_width(), window.get_height()))
+        fade_surface.fill((0, 0, 0))
+
+        # Create a surface for the time text
+        font = pg.font.Font(None, 48)
+        time_text = font.render(time_string, True, (255, 255, 255))
+        time_rect = time_text.get_rect(center=(window.get_width() // 2, 280)) 
+
+        # Start the victory sequence
+        ps.win_music.set_volume(0.0)
+        ps.win_music.play(loops=-1)
+
+        # 5-second fade in (уменьшено с 12 секунд для лучшего UX)
+        fade_in_duration = 5000
+        start_time = pg.time.get_ticks()
+
+        while True:
+            current_time = pg.time.get_ticks()
+            elapsed = current_time - start_time
+            progress = min(1.0, elapsed / fade_in_duration)
     
-    ===============Attributes===============
-    move (int): Gives the enemy an opportunity to act every 10 seconds ingame.
-    fog_timer (int): Measures how long the fog will be visible to the player.
-    movementStage (int): Activates chase flag when this variable is equal to a specific value.
-    chase (bool): Activates when enemy appears to chase the player, if the enemy escapes, it is disabled.
-    spook (bool): Activates when player action is required to ward off the enemy.
-    moveChoice (string): Action that enemy will proceed with in a turn.
-    movementOpportunity (int): the integer describing the current time, used to check if it's the appropriate interval to have the monster take an action
-    scareChoice (string): Sub-action that enemy will proceed with in a turn when 'scare' is chosen from moveChoice.
-    aiLevel (int): Sets frequency of enemy action depending on game difficulty.
-    fog (bool): Activates when fog action is made by enemy, opens up new actions to enemy.
-    enemyX / enemyY (int): Measures position of enemy on game map.
-    '''
+            if progress >= 1.0:
+                break
+        
+            # Smoothly increase music volume and screen opacity
+            music_volume = progress
+            ps.win_music.set_volume(music_volume)
+    
+            screen_alpha = int(255 * progress)
+            fade_alpha = 255 - screen_alpha
+    
+            # Render the win screen with current alpha
+            window.fill((0, 0, 0))
+            win_screen_scaled.set_alpha(screen_alpha)
+            window.blit(win_screen_scaled, (0, 0))
+    
+            # Render time text with the same alpha
+            time_text.set_alpha(screen_alpha)
+            window.blit(time_text, time_rect)
+    
+            # Apply fading black overlay
+            fade_surface.set_alpha(fade_alpha)
+            window.blit(fade_surface, (0, 0))
+    
+            pg.display.update()
+            clock.tick(60)
+
+        # Show the final screen
+        window.blit(win_screen_scaled, (0, 0))
+        window.blit(time_text, time_rect)
+        pg.display.update()
+
+        # Wait for Enter or Escape key
+        waiting = True
+        print("Press ENTER or ESC to continue...")
+
+        while waiting:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_RETURN or event.key == pg.K_ESCAPE:
+                        waiting = False
+            clock.tick(60)
+
+        # Fade out music and screen (3 секунды)
+        fade_out_duration = 3000
+        start_time = pg.time.get_ticks()
+
+        while True:
+            current_time = pg.time.get_ticks()
+            elapsed = current_time - start_time
+            progress = min(1.0, elapsed / fade_out_duration)
+    
+            if progress >= 1.0:
+                break
+        
+            # Smoothly decrease music volume and screen opacity
+            music_volume = 1.0 - progress
+            ps.win_music.set_volume(music_volume)
+    
+            fade_alpha = int(255 * progress)
+    
+            # Render the final screen
+            window.blit(win_screen_scaled, (0, 0))
+            window.blit(time_text, time_rect)
+    
+            # Apply fading black overlay
+            fade_surface.set_alpha(fade_alpha)
+            window.blit(fade_surface, (0, 0))
+    
+            pg.display.update()
+            clock.tick(60)
+
+        # Плавно останавливаем музыку с fadeout
+        ps.win_music.fadeout(1000)
+        pg.time.delay(1000)  # Даем время для завершения fadeout
+
+        # Final cleanup
+        window.fill((0, 0, 0))
+        pg.display.update()
+
+    def save_score(self, difficulty, time_string):
+        """Сохраняет результат игры в файл"""
+        try:
+            scores_file = '/home/Mr.Robot/FLASH-GAME/FLASH_Scores.txt'
+        
+            # Создаем директорию если не существует
+            os.makedirs(os.path.dirname(scores_file), exist_ok=True)
+        
+            # Получаем текущую дату
+            current_date = date.today().strftime("%Y-%m-%d")
+        
+            # Форматируем запись
+            score_entry = f"Дата: {current_date} | Сложность: {difficulty} | Время: {time_string}\n"
+        
+            # Записываем в файл (добавляем в конец)
+            with open(scores_file, 'a', encoding='utf-8') as f:
+                f.write(score_entry)
+
+            print(f"Score saved successfully: {score_entry.strip()}")
+
+        except Exception as e:
+            print(f"There was an error saving the score: {e}")
+
+class ShadowMonster(FLASH_inanimates.MapElement):
     def __init__(self, mapChar, difficulty):
         FLASH_inanimates.MapElement.__init__(self, mapChar)
-        self.move = 10
-        self.fog_timer = 0
-        self.movementStage = 0
+        self.enemyX = 8
+        self.enemyY = 35
+        self.state = "patrol"
+        self.visible = True
+        self.chase_timer = 0
+        self.fog = False 
+        self.moveChoice = None
         self.moveOpportunity = 0
-        self.enemyX = 100
-        self.enemyY = 100
         self.chase = False
         self.spook = False
-        self.fog = False
-        self.scareChoice = 'none'
-        self.moveChoice = 'none'
+        self.scared_timer = 0
+        self.is_flashed = False
+        self.step_sound_timer = 0
+        self.step_sound_playing = False
+        self.last_step_time = 0
+        
+        # Используем предзагруженный звук из primarySettings
+        self.step_sound = ps.monster_step
+        
         if difficulty == 'easy':
-            self.aiLevel = 10
+            self.speed = 0.015
+            self.detection_range = 5
+            self.attack_range = 1.5
+            self.step_sound_interval = 2000  # Интервал между шагами
+            self.patrol_step_chance = 0.3  # 30% chance в патруле
         elif difficulty == 'normal':
-            self.aiLevel = 15
+            self.speed = 0.02
+            self.detection_range = 7
+            self.attack_range = 1.3
+            self.step_sound_interval = 1500
+            self.patrol_step_chance = 0.5  # 50% chance в патруле
         elif difficulty == 'hard':
-            self.aiLevel = 20
-    
-    def movementGenerator(self,player,gameMap, menuTime, timePaused):
-        '''
-        Determines which move the monster will make. Also checks if player made an action to ward off enemy.
-        ===============Parameters===============
-        player (PlayerCharacter): the player object used to track if the monster is close to the player
-        gameMap (GameMap): map used to add enemy in the game
-        menuTime (float): the number that describes how much time was spent in the menu
-        timePaused (float): the number that describes how long the game was paused for
-        
-        return nothing
-        '''
-        self.moveOpportunity = (pg.time.get_ticks() / 1000) - menuTime -timePaused
-        #self.moveOpportunity = 0 #This disables ai
-        if self.fog_timer == self.move:
-                self.fog = False
-                self.fog_timer = 0
-        if (self.move - 0.06) <= self.moveOpportunity:
-            self.move += 10
-            if self.chase == True:
-                player.winning = 0
-            if self.spook == True:
-                if self.scareChoice == 'hallucination':
-                    self.moving(player,gameMap)
-                    self.spook = False
-                else:
-                    player.winning = 0
-            elif self.spook == False and self.scareChoice == 'fog':
-                pass #this will disable the fog(?)
+            self.speed = 0.025
+            self.detection_range = 10
+            self.attack_range = 1.2
+            self.step_sound_interval = 1000
+            self.patrol_step_chance = 0.7  # 70% chance в патруле
 
-            chance = random.randint(0,20)
-            if self.fog:
-                chance -= 2
-            if player.keyFlag:
-                chance -= 3
-            if self.aiLevel >= chance:
-                self.moveChoice = random.choice(['move','drain','scare'])
-                if self.moveChoice == 'move':
-                    self.moving(player,gameMap)
-                elif self.moveChoice == 'scare':
-                    self.scare(player,gameMap)
-            else:
-                pass
+    def update(self, player, gameMap, delta_time):
+        old_x = int(self.enemyX)
+        old_y = int(self.enemyY)
+        if (0 <= old_x < gameMap.width and 0 <= old_y < gameMap.height and
+            gameMap.mapArray[old_y][old_x] == 'A'):
+            gameMap.mapArray[old_y][old_x] = '.'
+        self.moveOpportunity += delta_time
+        self.step_sound_timer += delta_time * 1000
+        current_time = pg.time.get_ticks()
         
-    def moving(self,player,gameMap):
-        '''
-        Used to track if enemy will appear on the map to chase player.
-        ===============Parameters===============
-        player (PlayerCharacter): the player object used to track if the monster is close to the player
-        gameMap (GameMap): map used to add enemy in the game
+        if self.state != "scared" and self.is_flashed:
+            self.is_flashed = False
+            print("Monster can be flashed again!")
+            
+        distance = self.get_distance_to_player(player)
         
-        returns nothing
-        '''
-        self.movementStage += 1
-        if self.movementStage == 3:  #change to 2 for real game
-            self.movementStage = 0
-            self.chase = True
-            if player.keyFlag:
-                self.enemyY = int(player.charY - 1)
-            else:
-                self.enemyY = int(player.charY + 1)
-            self.enemyX = int(player.charX)
-            self.move += 10
-            gameMap.enemyAdded(self)
-            pg.mixer.music.load('FLASH_Music/FLASH_chase.ogg')
-            pg.mixer.music.play(0,0.0)
-    def scare(self,player, gameMap):
-        '''
-        Used to determine sub-action taken if moveChoice == 'scare'.
-        ===============Parameters===============
-        player (PlayerCharacter): the player object used to track if the monster is close to the player
-        gameMap (GameMap): map used to add enemy in the game
+        # ПРОВЕРКА ЛИНИИ ВИДИМОСТИ ДЛЯ ПРЕСЛЕДОВАНИЯ
+        can_see_player = self.has_line_of_sight(player, gameMap)
         
-        returns nothing
-        '''
-        self.scareChoice = random.choice(['footsteps','hallucination','fog'])
-        if self.fog == True:
-            self.scareChoice = random.choice(['hallucination','growl'])
-        if self.scareChoice == 'footsteps':
-            self.spook = True
-            pg.mixer.music.load('FLASH_SoundEffects/FLASH_monsterSteps.ogg')
-            pg.mixer.music.play(0, 0.0)
-        elif self.scareChoice == 'growl':
-            self.spook = True
-            pg.mixer.music.load('FLASH_SoundEffects/FLASH_lowMonster.wav')
-            pg.mixer.music.play(0,0.0)
-        elif self.scareChoice == 'hallucination': #maybe add spook here
-            self.spook = True
-            self.enemyY = int(player.charY + (random.choice([-2,-1,1])))
-            self.enemyX = int(player.charX + (random.choice([-2,-1,1])))
-            if 0 < self.enemyY < gameMap.height and 0 < self.enemyX < gameMap.width:
-                gameMap.enemyAdded(self)
+        if self.state == "patrol":
+            # Начинаем погоню только если видим игрока и нет стены между ними
+            if distance < self.detection_range and can_see_player:
+                self.state = "chase"
+                self.chase = True
+                print("Monster started chasing!")
+                # При начале погони сразу включаем звук шагов
+                self.play_step_sound(player)
+            
+            self.patrol_behavior(gameMap)
+            
+            # В режиме патруля воспроизводим звук только иногда
+            if (self.step_sound_timer >= self.step_sound_interval and 
+                random.random() < self.patrol_step_chance and
+                not self.step_sound_playing):
+                self.play_step_sound(player)
+                self.step_sound_timer = 0
+                
+        elif self.state == "chase":
+            # Проверяем ослепление фонариком
+            if (player.flashlight.onStatus and 
+                distance < 8 and 
+                self.is_monster_in_flashlight_cone(player) and
+                not self.is_flashed):
+                self.state = "scared"
+                self.chase = False
+                self.scared_timer = 5.0
+                self.is_flashed = True
+                # РЕЗКО ОСТАНАВЛИВАЕМ ЗВУК ПРИ ОСЛЕПЛЕНИИ
+                self.stop_step_sound()
+                print("Monster is scared by the flashlight!")
+            elif distance < self.attack_range and can_see_player:
+                player.winning = 0
+                self.stop_step_sound()  # Останавливаем звук при атаке
+                print("Monster caught the player!")
             else:
-                if player.keyFlag:
-                    self.enemyY = int(player.charY - 1)
+                # Продолжаем преследование только если видим игрока
+                if can_see_player:
+                    self.chase_behavior(player, gameMap)
+                    # В режиме преследования постоянно воспроизводим звук
+                    if not self.step_sound_playing:
+                        self.play_step_sound(player)
                 else:
-                    self.enemyY = int(player.charY + 1)
-                self.enemyX = int(player.charX)
-                gameMap.enemyAdded(self)
-        elif self.scareChoice == 'fog':  #Idk maybe another sound thing instead just want to utilize hide mechanic.
-            self.fog_timer = self.move + 20
-            self.fog = True
-            self.movementStage = 2
+                    # Если потеряли видимость, возвращаемся к патрулированию
+                    self.state = "patrol"
+                    self.chase = False
+                    self.stop_step_sound()
+                    print("Monster lost sight of player, returning to patrol")
+                    
+        elif self.state == "scared":
+            # В режиме испуга НЕ двигаемся
+            self.scared_behavior(player, gameMap)
+            self.scared_timer -= delta_time
+            # Гарантируем, что звук выключен в режиме испуга
+            self.stop_step_sound()
+            
+            if self.scared_timer <= 0:
+                self.state = "patrol"
+                self.is_flashed = False
+                print("Monster is no longer scared.")
+
+    def play_step_sound(self, player):
+        """Воспроизводит звук шагов монстра с правильным объемом"""
+        if self.step_sound is None:
+            return
+            
+        distance = self.get_distance_to_player(player)
+        max_distance = 20
+        volume = max(0, 1.0 - (distance / max_distance))
+        volume = min(1.0, max(0.1, volume))
+        
+        try:
+            # Устанавливаем громкость
+            self.step_sound.set_volume(volume * 0.3)
+            
+            # Если звук не воспроизводится, запускаем его с зацикливанием
+            if not self.step_sound_playing:
+                # Воспроизводим с зацикливанием (loops=-1)
+                self.step_sound.play(loops=-1)
+                self.step_sound_playing = True
+                # print(f"Monster step sound started (looped), volume: {volume * 0.3:.2f}")
+            
+        except Exception as e:
+            print(f"Error playing monster step sound: {e}")
+            # Fallback на обычный звук шагов
+            if not self.step_sound_playing:
+                ps.step.set_volume(volume * 0.5)
+                ps.step.play(loops=-1)
+                self.step_sound_playing = True
+
+    def stop_step_sound(self):
+        """Останавливает звук шагов монстра"""
+        if self.step_sound_playing:
+            try:
+                if self.step_sound:
+                    self.step_sound.stop()
+                # Также останавливаем fallback звук на всякий случай
+                ps.step.stop()
+                self.step_sound_playing = False
+                # print("Monster step sound stopped")
+            except Exception as e:
+                print(f"Error stopping monster step sound: {e}")
+                self.step_sound_playing = False
+
+    def patrol_behavior(self, gameMap):
+        """Поведение при патрулировании - двигается случайно"""
+        if self.state == "scared":
+            return  # Не двигаемся в режиме испуга
+            
+        if random.random() < 0.05:
+            self.move_randomly(gameMap)
+
+    def chase_behavior(self, player, gameMap):
+        """Поведение при преследовании - движется к игроку"""
+        self.move_towards_player(player, gameMap)
+
+    def scared_behavior(self, player, gameMap):
+        """Поведение при испуге - убегает от игрока"""
+        # В режиме испуга монстр не двигается - он замирает на месте
+        pass
+
+    def has_line_of_sight(self, player, gameMap):
+        """Проверяет, есть ли прямая видимость между монстром и игроком без стен"""
+        start_x, start_y = self.enemyX, self.enemyY
+        end_x, end_y = player.charX, player.charY
+        
+        # Используем упрощенный алгоритм проверки линии видимости
+        steps = 20  # Количество точек для проверки
+        for i in range(steps + 1):
+            t = i / steps
+            check_x = start_x + (end_x - start_x) * t
+            check_y = start_y + (end_y - start_y) * t
+            
+            # Проверяем, не является ли текущая клетка стеной
+            map_x = int(check_x)
+            map_y = int(check_y)
+            
+            if (0 <= map_x < gameMap.width and 0 <= map_y < gameMap.height):
+                if gameMap.mapArray[map_y][map_x] == '#':
+                    return False  # Стена на пути - нет видимости
+                    
+        return True  # Достигли игрока без столкновения со стенами
+
+    def is_monster_visible_to_player(self, player, gameMap):
+        player_angle = player.charAngle
+        monster_angle = math.atan2(self.enemyY - player.charY, self.enemyX - player.charX)
+        angle_diff = abs((monster_angle - player_angle + math.pi) % (2 * math.pi) - math.pi)
+        return angle_diff < (math.pi/4)
+    
+    def is_monster_in_flashlight_cone(self, player):
+        dx = self.enemyX - player.charX
+        dy = self.enemyY - player.charY
+        angle_to_monster = math.atan2(dx, dy)
+        angle_diff = (angle_to_monster - player.charAngle + math.pi) % (2 * math.pi) - math.pi
+        return abs(angle_diff) < (math.pi / 3)
+
+    def move_towards_player(self, player, gameMap):
+        dx = player.charX - self.enemyX
+        dy = player.charY - self.enemyY
+        distance = max(0.1, math.sqrt(dx*dx + dy*dy))
+        dx /= distance
+        dy /= distance
+        new_x = self.enemyX + dx * self.speed
+        new_y = self.enemyY + dy * self.speed
+        if self.can_move_to(new_x, new_y, gameMap):
+            self.enemyX = new_x
+            self.enemyY = new_y
+
+    def move_away_from_player(self, player, gameMap):
+        dx = player.charX - self.enemyX
+        dy = player.charY - self.enemyY
+        distance = max(0.1, math.sqrt(dx*dx + dy*dy))
+        dx /= distance
+        dy /= distance
+        new_x = self.enemyX - dx * self.speed
+        new_y = self.enemyY - dy * self.speed
+        if self.can_move_to(new_x, new_y, gameMap):
+            self.enemyX = new_x
+            self.enemyY = new_y
+
+    def move_randomly(self, gameMap):
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        random.shuffle(directions)
+        for dx, dy in directions:
+            new_x = self.enemyX + dx * self.speed * 2
+            new_y = self.enemyY + dy * self.speed * 2
+            if self.can_move_to(new_x, new_y, gameMap):
+                self.enemyX = new_x
+                self.enemyY = new_y
+                break
+
+    def can_move_to(self, x, y, gameMap):
+        map_x = int(x)
+        map_y = int(y)
+        if not (0 <= map_x < gameMap.width and 0 <= map_y < gameMap.height):
+            return False
+        return gameMap.mapArray[map_y][map_x] == '.'
+
+    def get_distance_to_player(self, player):
+        return math.sqrt(
+            (player.charX - self.enemyX)**2 + 
+            (player.charY - self.enemyY)**2
+        )
