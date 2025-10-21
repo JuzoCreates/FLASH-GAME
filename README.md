@@ -1,7 +1,7 @@
 # ⚡ FLASH GAME ⚡
 
 Welcome to **FLASH GAME** — a fast-paced arcade built with **Python** and **Pygame**.  
-Originally based on [JuzoCreates/FLASH-GAME](https://github.com/JuzoCreates/FLASH-GAME), this version includes multiple fixes, optimizations, and structural improvements for better stability across all systems.
+Originally based on my old project, this version includes multiple fixes, optimizations, and structural improvements for better stability across all systems.
 
 ---
 
