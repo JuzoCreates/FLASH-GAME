@@ -1,199 +1,127 @@
-# ⚡ FLASH - BETA
+# ⚡ FLASH GAME ⚡
 
-FLASH is a Python horror game built with the **Pygame** library.
-
----
-
-## 🎮 Features
-
-### 🧭 First-Person Perspective
-- Unique **first-person view**
-- Powered by a **custom raycasting engine** that transforms a 2D map into a pseudo-3D perspective
-- Creates an immersive atmosphere for the player
-
-### 🗺️ Random Map Generation
-- Algorithm dynamically changes **map exits** and **available pickups**
-- Ensures that every playthrough feels unique
-
-### 📊 Recorded Stats
-- Each run is saved into **FLASH_Scores.txt**
-- Tracks:
-  - Completion time
-  - Date of playthrough
-  - Selected difficulty
-- Perfect for competing with friends or yourself
-
-### 👾 Enemy AI & Custom Difficulty
-- The main enemy follows **multiple strategies** to stop the player
-- Player actions include:
-  - Hiding from noises
-  - Using the flashlight to repel shadow hallucinations
-  - Identifying specific sounds (e.g., battery drain does **not** require hiding)
-- Enemy has several win conditions, while the player has only one
-- **Difficulty is adjustable**
-
-### ⚙️ Custom Settings
-- **Difficulty** (Easy / Normal / Hard)
-- **Controls**: keyboard or mouse for camera movement
-- **Graphics**: low, medium, high
-- **Fullscreen** option (recommended)
+Welcome to **FLASH GAME** — a fast-paced arcade built with **Python** and **Pygame**.  
+Originally based on [JuzoCreates/FLASH-GAME](https://github.com/JuzoCreates/FLASH-GAME), this version includes multiple fixes, optimizations, and structural improvements for better stability across all systems.
 
 ---
 
-## ⛔ Limitations
-- The camera cannot be moved **up or down** (due to the raycasting engine)
-- Transparent objects may appear with a **dark rectangle border**
+## 🚀 What's New
+
+- 🔧 Fixed path and case-sensitivity issues (especially on Linux)
+- 🧩 Reorganized project structure for cleaner modularity
+- ⚙️ Improved startup sequence and error handling
+- 🕹️ Enhanced controls and UI responsiveness
+- 🖼️ Fixed several visual bugs (textures, buttons, scaling)
+- 💾 Optimized resource loading and memory cleanup on exit
+- 🌍 Cross-platform support — Windows, macOS, and Linux
 
 ---
 
-## 🐞 Known Issues
-1. Pressing **Ctrl+C** during gameplay may cause a crash
-2. Choosing a **graphics level too high** for your hardware can result in a **memory error**
+## 🧠 Game Overview
+
+**FLASH GAME** is a reflex-based arcade where precision and timing decide your score.  
+Control your character, dodge obstacles, and aim for the highest possible points.  
+Built entirely in **Pygame**, it’s designed to be simple yet addictive.
 
 ---
 
-## 💻 Installation & Running
+## 🎮 Controls
 
-### WORKS ONLY ON WINDOWS, OTHER OS IS NOT AVIABLE NOW!
-
-### 1. Install Python
-- **Recommended version:** 3.8 or higher
-- Download from [python.org](https://www.python.org/downloads/)
-
-### 2. Install Pygame
-Run in command line/terminal:
-```bash
-pip install pygame
-```
-
-### 3. Verify Installation
-Test Pygame installation:
-```bash
-python -m pygame.examples.aliens
-```
-Or in Python shell:
-```python
-import pygame
-print(pygame.version.ver)
-```
-
-### 4. Clone and Setup
-```bash
-git clone https://github.com/JuzoCreates/FLASH-GAME.git
-cd FLASH-GAME
-```
-
-### 5. Run the Game
-```bash
-python FLASH_main.py
-```
-Or click "Run" button in your IDE if you're using one.
-
-### 6. Enjoy!
-The game should start automatically. If you encounter any issues, make sure you're in the correct directory and all dependencies are installed.
+| Action | Key |
+|--------|-----|
+| Move   | Arrow Keys / WASD |
+| Pause  | `Esc` |
+| Confirm / Select | `Enter` / `Space` |
+| Exit Game | `Q` or close window |
 
 ---
 
-## 🗂️ **Updated Project Structure: FLASH-GAME**
+## 🧰 Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/JuzoCreates/FLASH-GAME.git
+   cd FLASH-GAME
+   ````
+
+2. **(Optional) Create a virtual environment**
+
+   ```bash
+   python3 -m venv env
+   source env/bin/activate     # macOS / Linux
+   env\Scripts\activate        # Windows
+   ```
+
+3. **Install dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   If you don’t have a `requirements.txt`, install manually:
+
+   ```bash
+   pip install pygame
+   ```
+
+4. **Run the game**
+
+   ```bash
+   python FLASH_main.py
+   ```
+
+---
+
+## 🗂️ Project Structure
 
 ```
 FLASH-GAME/
-├── 🎮 **Core Game Files**
-│   ├── FLASH_main.py              # Main game loop and core logic
-│   ├── FLASH_menu.py              # Menu system and UI
-│   ├── FLASH_characters.py        # Player and monster classes
-│   ├── FLASH_inanimates.py        # Static objects and items
-│   ├── FLASH_rendering.py         # Graphics and rendering engine
-│   └── FLASH_primarySettings.py   # Game configuration and settings
-│
-├── 🖼️ **Assets/Visuals**
-│   ├── FLASH_Environment/
-│   │   ├── FLASH_RenderedElements/
-│   │   │   ├── FLASH_Background.png
-│   │   │   ├── FLASH_Door.png
-│   │   │   ├── FLASH_Fog.png
-│   │   │   ├── FLASH_Wall.png
-│   │   │   └── FLASH_MaxWallDistance.jpg
-│   │   ├── FLASH_UI/
-│   │   │   ├── FLASH_Battery0.png
-│   │   │   ├── FLASH_BatteryFull.png
-│   │   │   ├── FLASH_BatteryLow.png
-│   │   │   ├── FLASH_BatteryMed.png
-│   │   │   └── FLASH_Key.png
-│   │   ├── FLASH_Escape.png
-│   │   └── FLASH_Pause.png
-│   │
-│   ├── FLASH_InteractiveAssets/
-│   │   ├── FLASH_Flashlight/
-│   │   │   ├── FLASH_FlashlightOn.png
-│   │   │   ├── FLASH_FlashlightOff.png
-│   │   │   └── FLASH_FlashlightHalfway.png
-│   │   ├── FLASH_Monster/
-│   │   │   ├── FLASH_ShadowMonster.png
-│   │   │   └── FLASH_Hallucination.png
-│   │   └── FLASH_Pickups/
-│   │       ├── FLASH_Battery.png
-│   │       └── FLASH_Key.png
-│   │
-│   ├── FLASH_JumpScare/
-│   │   ├── FLASH_01.png to FLASH_26.png    # 26 jump scare frames
-│   │   └── (complete animation sequence)
-│   │
-│   └── FLASH_MenuAssets/
-│       ├── FLASH_Backgrounds/
-│       │   ├── FLASH_MenuBackground.png
-│       │   ├── FLASH_SettingsMenu.png
-│       │   ├── FLASH_HowToPlayScreen.png
-│       │   ├── FLASH_HowToPlayControls.png
-│       │   └── FLASH_CreditsScreen.png
-│       ├── FLASH_Buttons/
-│       │   ├── FLASH_Start.png (+ Highlighted)
-│       │   ├── FLASH_Options.png (+ Highlighted)
-│       │   ├── FLASH_Exit.png (+ Highlighted)
-│       │   ├── FLASH_Easy/Normal/Hard buttons (+ Highlighted)
-│       │   ├── FLASH_Low/Medium/High graphics (+ Highlighted)
-│       │   ├── FLASH_Keyboard/Mouse controls (+ Highlighted)
-│       │   └── Various UI elements (Ticked/Unticked boxes, etc.)
-│       ├── FLASH_Logos/
-│       │   ├── FLASH_Logo.png
-│       │   └── FLASH_Title.png
-│       ├── FLASH_Icon.png
-│       ├── FLASH_Over.png
-│       └── FLASH_Win.png
-│
-├── 🔊 **Audio Files**
-│   ├── FLASH_Music/
-│   │   └── FLASH_chase.ogg           # Chase sequence music
-│   │
-│   └── FLASH_SoundEffects/
-│       ├── FLASH_steps.wav           # Player footsteps
-│       ├── FLASH_monsterSteps.ogg    # Monster footsteps
-│       ├── FLASH_lowMonster.wav      # Monster growls
-│       ├── FLASH_flashlightOn.wav    # Flashlight sound
-│       ├── FLASH_jumpscare.ogg       # Jump scare sound
-│       ├── FLASH_gameOver.ogg        # Game over music
-│       ├── FLASH_ding.wav            # Notification sound
-│       ├── FLASH_discovery.wav       # Item discovery
-│       ├── FLASH_shock.wav           # Shock/surprise sound
-│       └── FLASH_swoosh.ogg          # UI transition sound
-│
-├── 📊 **Data & Configuration**
-│   ├── FLASH_Scores.txt              # High scores and game data
-│   └── __pycache__/                  # Python compiled files
-│       ├── FLASH_characters.cpython-313.pyc
-│       ├── FLASH_menu.cpython-313.pyc
-│       ├── FLASH_rendering.cpython-313.pyc
-│       ├── FLASH_inanimates.cpython-313.pyc
-│       └── FLASH_primarySettings.cpython-313.pyc
-│
-└── 📄 **Documentation**
-    └── README.md                      # Project documentation
+├── FLASH_main.py           # Main entry point
+├── modules/                # Game logic and helper modules
+│   ├── player.py
+│   ├── level.py
+│   └── utils.py
+├── assets/                 # Game assets
+│   ├── images/
+│   └── sounds/
+├── requirements.txt        # Dependencies
+└── README.md               # This file
 ```
 
 ---
 
-**Note:** If you have multiple Python versions, use `py` and `pip3` instead of `python` and `pip`.
+## 🪲 Known Issues
+
+* Minor lag may occur on certain systems during the first level load
+* Fullscreen toggle not yet implemented
+* Some sound effects might clip at high volume
 
 ---
 
-⚠️ **IF YOU FIND ANY BUGS PLEASE REPORT THEM DIRECTLY TO ME** ⚠️
+## 🔮 Future Plans
+
+* Add settings menu (sound, controls, resolution)
+* Implement multiple difficulty levels
+* Add player progress saving
+* Improve visuals and animations
+* Multi-language support (EN, RU, AZ)
+
+---
+
+## 📝 License
+
+This project is distributed under the **MIT License**.
+See the `LICENSE` file for details.
+
+---
+
+## 🙌 Credits
+
+* Original project by [@JuzoCreates](https://github.com/JuzoCreates)
+* Updated and maintained by myself
+* Built using [Pygame](https://www.pygame.org/)
+* Thanks to everyone who tested and contributed feedback ❤️
+
+---
+
+**FLASH GAME — Fast. Simple. Addictive.**
